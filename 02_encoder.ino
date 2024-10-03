@@ -81,3 +81,7 @@ bool isEncHold(uint8_t encState) {
 bool isEncRelease(uint8_t encState) {
   return (encState & 0b1100) == 0;
 }
+
+bool isEncNothing(uint8_t encState) {
+  return encState == ENC_NOTHING;
+}

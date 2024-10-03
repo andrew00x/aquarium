@@ -1,50 +1,35 @@
-#define TANK 3
+#define TANK 2
 
 // RELAY: A0, A1
-// PWM:   3, 5, 6, 9, 10, 11, 8 (software)
+//
+// PWM:   3, 5, 6, 9, 10, 11
+// pins:
+// 3  - 5  (PWM1)
+// 5  - 11 (PWM2)
+// 6  - 12 (PWM3)
+// 9  - 15 (PWM4)
+// 10 - 16 (PWM5)
+// 11 - 17 (PWM6)
+//
+// RTC error LED
+// 8  - 14 
 
 #define RELAY_KIND 0
 #define PWM_KIND 1
 
 #if (TANK == 1)
-#define EEPROM_FLAG 101
-#define SOFTWARE_PWM 0
-
-#define PWM1_PIN 3  // 6500K
-#define PWM1_MAX 240
-
-#define PWM2_PIN 5  // 8500K
-#define PWM2_MAX 170
-
-#define PWM3_PIN 6  // 10000K 
-#define PWM3_MAX 210
-
-#define PWM5_PIN 9  // Full spectrum
-#define PWM5_MAX 255
-
-#define PWM6_PIN 10 // Blue
-#define PWM6_MAX 230
-
-#define CHANNELS_ARR_LENGTH 5
-const char *channel_names[] = {
-  "Led 6500K",
-  "Led 8500K",
-  "Led 10000K",
-  "Led Full Spectrum",
-  "Led Blue"
-};
-#elif (TANK == 2)
-#define EEPROM_FLAG 102
-#define SOFTWARE_PWM 0
+// living room
+#define EEPROM_FLAG 100
+#define PWM_EXT_DIMM 0
 
 #define RELAY1_PIN A0 // Aerator
-#define RELAY2_PIN A1
+#define RELAY2_PIN A1 // CO2
 
-#define RELAY_ON HIGH // CO2
+#define RELAY_ON HIGH
 #define RELAY_OFF LOW
 
-#define PWM2_PIN 5 // Light
-#define PWM2_MAX 210
+#define PWM1_PIN 5 // Light
+#define PWM1_MAX 255
 
 #define CHANNELS_ARR_LENGTH 3
 const char *channel_names[] = {
@@ -52,48 +37,36 @@ const char *channel_names[] = {
   "CO2",
   "Light"
 };
-#elif (TANK == 3)
-#define EEPROM_FLAG 103
-#define SOFTWARE_PWM 0
+#elif (TANK == 2)
+// Office
+#define EEPROM_FLAG 100
+#define PWM_EXT_DIMM 1
 
-#define RELAY1_PIN A0 // Aerator
-#define RELAY2_PIN A1
+#define RELAY1_PIN A0 // Relay 1
+#define RELAY2_PIN A1 // Relay 2
 
-#define RELAY_ON HIGH // CO2
+#define RELAY_ON HIGH
 #define RELAY_OFF LOW
 
-#define PWM1_PIN 3  // Light Ch. 1
-#define PWM1_MAX 200
+#define PWM1_PIN 3  // Light1
+#define PWM1_MAX 255
 
-#define PWM2_PIN 5  // Light Ch. 2
-#define PWM2_MAX 200
+#define PWM2_PIN 5  // Light2
+#define PWM2_MAX 255
 
-#define PWM3_PIN 6  // Light Ch. 3
-#define PWM3_MAX 200
+#define PWM3_PIN 6  // Light3
+#define PWM3_MAX 255
 
-#define PWM5_PIN 9  // Light Ch. 4
-#define PWM5_MAX 200
-
-#define PWM6_PIN 10 // Light Ch. 5
-#define PWM6_MAX 200
-
-#define PWM7_PIN 11 // Light Ch. 6
-#define PWM7_MAX 200
-
-#define CHANNELS_ARR_LENGTH 8
+#define CHANNELS_ARR_LENGTH 5
 const char *channel_names[] = {
-  "Aerator",
-  "CO2",
-  "Light Ch. 1",
-  "Light Ch. 2",
-  "Light Ch. 3",
-  "Light Ch. 4",
-  "Light Ch. 5",
-  "Light Ch. 6"
+  "Relay 1",
+  "Relay 2",
+  "Light 1",
+  "Light 2",
+  "Light 3"
 };
 #endif
 
-#if (SOFTWARE_PWM == 0)
 #define PWM_DEPTH 31
 const uint8_t pwm_levels[] = {
   0, 1, 2, 3, 4, 5, 7, 9, 12,
@@ -101,9 +74,6 @@ const uint8_t pwm_levels[] = {
   67, 76, 86, 96, 108, 120, 134, 148, 163,
   180, 197, 216, 235, 255
 };
-#else
-#define PWM_DEPTH 15
-#endif
 
 #define PRG_STATE_ON true
 #define PRG_STATE_OFF false
@@ -124,6 +94,8 @@ const uint8_t pwm_levels[] = {
 #define DST 1
 #define STD 0
 #define DST_EEPROM_ADDR 500
+#define RTC_LOST_POWER_ADDR 501
+#define RTC_LOST_POWER_LED_PIN 8
 // ----------
 #define MAIN 0
 #define MAIN_MENU 1
@@ -137,6 +109,8 @@ const uint8_t pwm_levels[] = {
 #define PROGRAM_SETTINGS_START_TIME 9
 #define PROGRAM_SETTINGS_DURATION 10
 #define PROGRAM_SETTINGS_VALUE 11
+// ----------
+#define DISPLAY_TIMEOUT_MILLIS 180000 // 3min
 // ----------
 #define incVal(v, diff, max) min((v) + (diff), (max))
 #define decVal(v, diff, min) max((v) - (diff), (min))
@@ -157,14 +131,12 @@ const uint8_t pwm_levels[] = {
 // ----------
 
 // ==========
+#include <avr/wdt.h>
 #include <SPI.h>
 #include <Wire.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include <EEPROM.h>
-#if (SOFTWARE_PWM == 1)
-#include <GyverTimers.h>
-#endif
 #include <RTClib.h>
 
 const uint8_t channel_pwm_max[] = {
@@ -183,21 +155,14 @@ const uint8_t channel_pwm_max[] = {
 #ifdef PWM3_PIN
   PWM3_MAX,
 #endif
+#ifdef PWM4_PIN
+  PWM4_MAX,
+#endif
 #ifdef PWM5_PIN
   PWM5_MAX,
 #endif
 #ifdef PWM6_PIN
   PWM6_MAX,
-#endif
-#ifdef PWM7_PIN
-  PWM7_MAX,
-#endif
-#ifdef PWM4_PIN
-#if (SOFTWARE_PWM == 1)
-  PWM4_MAX,
-#else
-  0,  // unused
-#endif
 #endif
 };
 
@@ -242,23 +207,19 @@ bool update_display = false;
 void setup() {
   Serial.begin(9600);
 
-#if (SOFTWARE_PWM == 1)
-  Timer1.setFrequency(50000UL);
-  Timer1.enableISR(CHANNEL_A);
-#endif
-
   initDisplay();
-  initClock();
-  initEncoder();
-
   display.setTextSize(1, 2);
 
   if (!isEEPROMReady()) {
     initEEPROM();
-    DateTime now = rtc.now();
-    EEPROM.write(DST_EEPROM_ADDR, isDST(now) ? DST : STD);
+    // DateTime now = rtc.now();
+    // EEPROM.write(DST_EEPROM_ADDR, isDST(now) ? DST : STD);
   }
 
+  initClock();
+  initEncoder();
+
+  pinMode(RTC_LOST_POWER_LED_PIN, OUTPUT);
   for (uint8_t c = 0; c < CHANNELS_ARR_LENGTH; c++) {
     channel ch;
     EEPROM.get(channelAddr(c), ch);
@@ -266,10 +227,15 @@ void setup() {
     digitalWrite(ch.pin, ch.val);
     if (ch.kind == PWM_KIND) pwm_pins[c] = ch.pin;
   }
+
+  wdt_enable(WDTO_4S);
 }
 
 void loop() {
   static uint32_t check_timer = 0;
+  static uint32_t display_timer = 0;
+
+  digitalWrite(RTC_LOST_POWER_LED_PIN, lostPower() ? HIGH : LOW); 
 
   enc_state = tickEncoder();
   if (mode == MAIN) {
@@ -308,10 +274,8 @@ void loop() {
 
       if (ch.kind == RELAY_KIND) digitalWrite(ch.pin, ch.val);
       else if (ch.kind == PWM_KIND && mode != PROGRAM_SETTINGS_VALUE) pwm_duties[c] = ch.val;
-#if (SOFTWARE_PWM == 0)
-      if (ch.kind == PWM_KIND) analogWrite(ch.pin, min(pwm_levels[pwm_duties[c]], channel_pwm_max[c]));
-      // if (ch.kind == PWM_KIND) analogWrite(ch.pin, pwm_duties[c]);
-#endif
+
+      if (ch.kind == PWM_KIND) writePWM(ch.pin, min(pwm_levels[pwm_duties[c]], channel_pwm_max[c]));
 
       if (ch.timer == 0 || now.second() == 0) {
         if (ch.mode == CHANNEL_MODE_AUTO) {
@@ -341,6 +305,14 @@ void loop() {
     }
     check_timer = millis();
   }
+  if (millis() - display_timer > DISPLAY_TIMEOUT_MILLIS) {
+    turnDisplayOff();
+  }
+  if (!isEncNothing(enc_state)) {
+    turnDisplayOn();
+    display_timer = millis();
+  }
+  wdt_reset();
 }
 
 void drawMainScreen() {
@@ -400,26 +372,10 @@ void format2Digits(uint8_t d, char s[]) {
   s[2] = '\0';
 }
 
-#if (SOFTWARE_PWM == 1)
-void _tickPWM() {
-  static volatile uint8_t counter = 0;
-  static volatile uint8_t duties[CHANNELS_ARR_LENGTH];
-  if (counter == PWM_DEPTH) {
-    for (uint8_t c = 0; c < CHANNELS_ARR_LENGTH; c++) {
-      if (pwm_pins[c] != 0) {
-        duties[c] = min(pwm_duties[c], channel_pwm_max[c]);
-        if (duties[c] > 0) digitalWrite(pwm_pins[c], HIGH);
-      }
-    }
-    counter = 0;
-  }
-  for (uint8_t c = 0; c < CHANNELS_ARR_LENGTH; c++) {
-    if (pwm_pins[c] != 0 && duties[c] == counter) digitalWrite(pwm_pins[c], LOW);
-  }
-  counter++;
-}
-
-ISR(TIMER1_A) {
-  _tickPWM();
-}
+void writePWM(uint8_t pin, int val) {
+#if (PWM_EXT_DIMM == 1)
+  analogWrite(pin, ~val);
+#else
+  analogWrite(pin, val);
 #endif
+}

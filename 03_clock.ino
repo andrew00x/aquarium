@@ -23,9 +23,14 @@ void initClock() {
     delay(2000);
     DateTime datetime = DateTime(F(__DATE__), F(__TIME__));
     rtc.adjust(datetime);
+    EEPROM.update(RTC_LOST_POWER_ADDR, 1);
     if (isDST(datetime)) EEPROM.update(DST_EEPROM_ADDR, DST);
     else EEPROM.update(DST_EEPROM_ADDR, STD);
   }
+}
+
+bool lostPower() {
+  return EEPROM.read(RTC_LOST_POWER_ADDR) != 0;
 }
 
 void adjustRtcIfNeeded(DateTime& datetime) {
@@ -122,6 +127,7 @@ bool setTime() {
         if (setup_datetime_step == SET_DATETIME_OK) {
           DateTime datetime = DateTime(year, month, day, hour, min, sec);
           rtc.adjust(datetime);
+          EEPROM.update(RTC_LOST_POWER_ADDR, 0);
           if (isDST(datetime)) EEPROM.update(DST_EEPROM_ADDR, DST);
           else EEPROM.update(DST_EEPROM_ADDR, STD);
         }

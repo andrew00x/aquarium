@@ -12,3 +12,11 @@ void initDisplay() {
   display.setCursor(0, 0);
   display.cp437(true);
 }
+
+void turnDisplayOff() {
+  display.ssd1306_command(SSD1306_DISPLAYOFF);
+}
+
+void turnDisplayOn() {
+  display.ssd1306_command(SSD1306_DISPLAYON);
+}

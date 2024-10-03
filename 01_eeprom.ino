@@ -40,10 +40,6 @@ void initEEPROM() {
 #endif
 #ifdef PWM6_PIN
   EEPROM.put(addr, channel{ PWM_KIND, PWM6_PIN, CHANNEL_MODE_OFF, 0, PWM_DEPTH, 0, 0 });
-  addr += EEPROM_CHANNEL_CELL_SIZE;
-#endif
-#ifdef PWM7_PIN
-  EEPROM.put(addr, channel{ PWM_KIND, PWM7_PIN, CHANNEL_MODE_OFF, 0, PWM_DEPTH, 0, 0 });
 #endif
 
   channel ch;
