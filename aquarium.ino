@@ -374,6 +374,7 @@ void format2Digits(uint8_t d, char s[]) {
 
 void writePWM(uint8_t pin, int val) {
 #if (PWM_EXT_DIMM == 1)
+  // For dimming external driver with 10V PWM an inverse signal is needed.
   analogWrite(pin, ~val);
 #else
   analogWrite(pin, val);
