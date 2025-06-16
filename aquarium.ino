@@ -1,4 +1,4 @@
-#define TANK 2
+#define TANK 3
 
 // RELAY: A0, A1
 //
@@ -18,7 +18,6 @@
 #define PWM_KIND 1
 
 #if (TANK == 1)
-// living room
 #define EEPROM_FLAG 100
 #define PWM_EXT_DIMM 0
 
@@ -38,7 +37,6 @@ const char *channel_names[] = {
   "Light"
 };
 #elif (TANK == 2)
-// Office
 #define EEPROM_FLAG 100
 #define PWM_EXT_DIMM 1
 
@@ -64,6 +62,23 @@ const char *channel_names[] = {
   "Light 1",
   "Light 2",
   "Light 3"
+};
+#elif (TANK == 3)
+#define EEPROM_FLAG 100
+#define PWM_EXT_DIMM 1
+
+#define RELAY1_PIN A0 // CO2
+
+#define RELAY_ON LOW
+#define RELAY_OFF HIGH
+
+#define PWM1_PIN 3  // Light
+#define PWM1_MAX 255
+
+#define CHANNELS_ARR_LENGTH 2
+const char *channel_names[] = {
+  "CO2",
+  "Light"
 };
 #endif
 
@@ -166,7 +181,7 @@ const uint8_t channel_pwm_max[] = {
 #endif
 };
 
-#define EEPROM_CHANNEL_CELL_SIZE 10
+#define EEPROM_CHANNEL_CELL_SIZE 11
 #define channelAddr(chNum) (chNum * EEPROM_CHANNEL_CELL_SIZE)
 struct channel {
   uint8_t kind;
@@ -174,6 +189,7 @@ struct channel {
   uint8_t mode;
   uint8_t offVal;
   uint8_t maxVal;
+  uint8_t prgNum;
   uint8_t val;
   uint32_t timer;
 };
@@ -282,7 +298,7 @@ void loop() {
           uint32_t nowSeconds = toSeconds(now.year(), now.month(), now.day(), now.hour(), now.minute(), now.second());
           if (ch.timer <= nowSeconds) {
             program prg;
-            bool activePrg = 0;
+            uint8_t activePrg = 0;
             uint32_t startSeconds;
             uint32_t endSeconds;
             for (uint8_t p = 0; !activePrg && (p < PROGRAM_PER_CHANNEL); p++) {
@@ -290,14 +306,15 @@ void loop() {
               if (prg.enabled) {                
                 startSeconds = toSeconds(now.year(), now.month(), now.day(), prg.startAtHour, prg.startAtMin, 0);
                 endSeconds = startSeconds + prg.workMin * 60;
-                if (nowSeconds >= startSeconds && nowSeconds < endSeconds) activePrg = 1;
+                if (nowSeconds >= startSeconds && nowSeconds < endSeconds) activePrg = p + 1;
               }
             }
+            EEPROM.update(channelAddr(c) + 5, activePrg);
             if (activePrg) {
-              EEPROM.update(channelAddr(c) + 5, prg.val);
-              EEPROM.put(channelAddr(c) + 6, endSeconds);
+              EEPROM.update(channelAddr(c) + 6, prg.val);
+              EEPROM.put(channelAddr(c) + 7, endSeconds);
             } else if (ch.val != ch.offVal) {
-              EEPROM.update(channelAddr(c) + 5, ch.offVal);
+              EEPROM.update(channelAddr(c) + 6, ch.offVal);
             }
           }
         }

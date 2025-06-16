@@ -264,7 +264,7 @@ void drawProgramSettingsValueScreen() {
 
 void resetChannelTimer(uint8_t ch) {
   active_channel.timer = 0;
-  EEPROM.put(channelAddr(ch) + 6, active_channel.timer);
+  EEPROM.put(channelAddr(ch) + 7, active_channel.timer);
 }
 
 long convertActiveProgramValueToPercentages() {

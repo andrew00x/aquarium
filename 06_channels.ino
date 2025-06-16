@@ -2,7 +2,7 @@
 const char *channel_settings[] = {
   "Mode: ",
   "State: ",
-  "Programs"
+  "Programs: "
 };
 
 #define CHANNEL_SETTINGS_MODE_ARR_LENGTH 3
@@ -74,7 +74,7 @@ void drawChannelSettingsScreen() {
     return;
   }
   if (millis() - read_channel_timer > 500) {
-    EEPROM.get(channelAddr(channel_pos) + 5, active_channel.val);
+    EEPROM.get(channelAddr(channel_pos) + 6, active_channel.val);
     update_display = true;
     read_channel_timer = millis();
   }
@@ -82,7 +82,13 @@ void drawChannelSettingsScreen() {
     char *currChannelSettings[CHANNEL_SETTINGS_ARR_LENGTH];
     currChannelSettings[0] = channel_modes[active_channel.mode];
     currChannelSettings[1] = (active_channel.val == active_channel.offVal) ? "OFF" : "ON";
-    currChannelSettings[2] = "";
+    if (active_channel.prgNum) {
+      char prgNum[2];
+      itoa(active_channel.prgNum, prgNum, 10);
+      currChannelSettings[2] = prgNum;
+    } else {
+      currChannelSettings[2] = "-";
+    }
 
     display.clearDisplay();
     display.setCursor(0, 0);
